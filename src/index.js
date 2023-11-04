@@ -1,25 +1,12 @@
-// components
-// http server - two routes, text and read
-// text adds a string to a sqlite table
-// read reads all data from that table
 'use strict'
-
 // packages
 let config = require('../config/config.json')
 let sqlite3 = require('sqlite3').verbose();
 let express = require('express');
-let sqlCommands = require('./sql');
-
-// constants
 const app = express();
-//const router = express.Router();
 
-// start in memory db
-let db = new sqlite3.Database(':memory:', (err) => {
-    if (err) {
-      return console.error(err.message);
-    }
-});
+// start + connect to db
+let db = new sqlite3.Database('../db/text.db');
 
 // listen for requests
 app.listen(config.port, () => {
@@ -30,30 +17,61 @@ app.listen(config.port, () => {
 // send a GET to `localhost:3000/<data>`
 app.get('/:text', (req, res) => {
     var text = req.params.text
+    console.log(`Request value: ${text}`)
 
-    res.send(text)
-    console.log(text)
-
-    // decide what to do
     // standup
     if (text == 'standup') { 
-        let output = sqlCommands.standUpDB()
-        console.log('standing up db ...');
-        console.log(output) //res.send() later
+        db.run('CREATE TABLE IF NOT EXISTS textStorage(name text)');
+        console.log('Created "textStorage" table.')
+        res.json({body: `Created 'textStorage' table.`})
+        res.end();
     }
-    //query
+    // query
     else if (text == 'query') {
-        let output = sqlCommands.queryDB()
-        console.log('querying all data ...');
-        console.log(output) //res.send() later
-    } 
+        db.all(`SELECT * FROM textStorage`, [], (err, rows) => {
+            if (err) {
+                throw err
+            }
+
+            const jsonArray = [];
+            rows.forEach((row) => {
+                jsonArray.push(row.name)
+            });
+
+            console.log(jsonArray)
+            res.json({jsonArray})
+            res.end();
+        });
+        
+    }
+    // drop the table
+    else if (text == 'drop') {
+        db.all(`DROP TABLE IF EXISTS textStorage;`, [], (err) => {
+            if (err) {
+              res.json({err})
+              throw err;
+            }
+            console.log(`dropped table`)
+            res.json({body: `dropped table`})
+            res.end();
+          });
+    }  
     // insert
     else { 
-        let output = sqlCommands.insertDB(text)
-        console.log('inserting into table ...'); 
-        console.log(output) //res.send() later
+        db.run(`INSERT INTO textStorage(name) VALUES(?)`, [text], function(err) {
+            console.log(`A row has been inserted with rowid ${this.lastID}`);
+            //res.send('Inserted ${text} into textStorage')
+            res.json({body: `${text}`});
+            res.end();
+        });
     }
 })
 
-// close db conn
-db.close()
+// empty request
+app.get('/', (req, res) => {
+    var text = req.params.text
+    console.log(`Request: ${text}`)
+
+    res.send({body: `Empty request. Try 'standup', 'query', or some string of text.`});
+    res.end();
+}) 

@@ -1,9 +1,10 @@
 {
   "dependencies": {
     "express": "^4.18.2",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "yarn": "^1.22.19"
   },
   "devDependencies": {
-    "@types/node": "^20.8.2"
+    "@types/node": "^20.8.10"
   }
 }
